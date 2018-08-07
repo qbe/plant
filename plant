@@ -19,7 +19,7 @@
 #--- GLOBAL CONSTANTS ---
 
 progstring = "plant"
-versionstring = "0.9.1"
+versionstring = "1.0.0"
 fullstring = progstring + ", version " + versionstring
 
 
@@ -305,7 +305,8 @@ class trelement:
                 self.children.append(trelement(addid, seperator))
                 return(1 + self.children[-1].addtotree(addlist, seplist))
             else:
-                self.children[-1].seperator = seperator
+                if (self.children[-1].seperator == ""):
+                    self.children[-1].seperator = seperator
                 return(self.children[-1].addtotree(addlist, seplist))
 
     def printpop(self, args):
@@ -400,7 +401,8 @@ class treehead:
                 self.entries.append(trelement(addid,seperator))
                 return(1+ self.entries[-1].addtotree(addlist, seplist))
             else:
-                self.entries[-1].seperator = seperator
+                if (self.entries[-1].seperator == ""):
+                    self.entries[-1].seperator = seperator
                 return(self.entries[-1].addtotree(addlist, seplist))
 
     def printpop(self, args):
