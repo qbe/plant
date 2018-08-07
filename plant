@@ -1,0 +1,465 @@
+#!/bin/python3
+
+#    prints a configurable tree-view of the input data
+#    Copyright (C) 2018 Lukas Hannen
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+#--- GLOBAL CONSTANTS ---
+
+progstring = "plant"
+versionstring = "0.9.1"
+fullstring = progstring + ", version " + versionstring
+
+
+#--- ARGUMENT PARSING ---
+
+import argparse
+
+parser = argparse.ArgumentParser(prog=progstring, description='generate tree-like lifeforms from sorted lists')
+
+parser.add_argument("-V", "--version", "--Version", action='version', version=fullstring)
+
+fold = parser.add_mutually_exclusive_group()
+fold.add_argument("-m", "--min",		action="store_const", dest="folding", const="min", help="never unfold nodes")
+fold.add_argument("-M", "--max", "--Max",	action="store_const", dest="folding", const="max", help="always unfold nodes")
+fold.add_argument("-s","--sensible",		action="store_const", dest="folding", const="sensible", help="only unfold nodes with multiple childs, default folding is \"%(default)s\"")
+parser.set_defaults(folding="sensible")
+
+lin = parser.add_mutually_exclusive_group()
+lin.add_argument("-a", "--ascii",		action="store_const", dest="style", const="ascii", help="ascii-style indent lines")
+lin.add_argument("-f", "--fancy", "--ansi",	action="store_const", dest="style", const="fancy", help="ansi-style indent lines")
+lin.add_argument("-n", "--none",		action="store_const", dest="style", const="none", help="disables indent lines, default indent lines are \"%(default)s\" style")
+parser.set_defaults(style="fancy")
+
+parser.add_argument("-w", "--width", type=int, default=4, help="per-level indentation width, -1 for length-based indent style, defaults to %(default)i")
+parser.add_argument("-r", "--regex", default="/", help="regex to split at, cannot contain paranthesis, defaults to \"%(default)s\"")
+parser.add_argument("-o", "--objects", type=int, default=1024, help="maximum number of objects buffered in memory, defaults to %(default)i")
+
+args = parser.parse_args()
+
+import re
+regex_str = args.regex.translate({ord(c): None for c in '()' })#deletes any instances of '()' from the regex string
+regex= re.compile("(" + regex_str + ")")
+finished = False
+
+
+#--- DEFINE SECTION ---
+
+import sys
+from collections import deque
+
+# the decorate_* functions are used to assemble the appropriate string decorations,
+# depending on line style and indentation level
+
+def decorate_child(args, parentname):
+    indentby = args.width
+    if(indentby < 0):
+        indentby = len(parentname) + 1
+    if(indentby == 0):
+        return("")
+
+    intersection = ' '
+    right = ' '
+    if(args.style == "ascii"):
+        intersection = '+'
+        right = '-'
+    if(args.style == "fancy"):
+        intersection = '├'
+        right = '─'
+
+    if(indentby == 1):
+        return ("" + intersection)
+    if(indentby == 2):
+        return(intersection + " ")
+    if(indentby == 3):
+        return(intersection + right + " ")
+
+    if(indentby == 4):
+        return(intersection + right + right + " ")
+
+    retstring = intersection + right + right
+    while(indentby > 4):
+        if(args.width < 0):
+            retstring = " " + retstring
+        else:
+            retstring = retstring + right
+        indentby = indentby - 1
+    return(retstring + " ")
+
+def decorate_lastchild(args, parentname):
+    indentby = args.width
+    if(indentby < 0):
+        indentby = len(parentname) + 1
+    if(indentby == 0):
+        return("")
+
+    intersection = ' '
+    right = ' '
+    if(args.style == "ascii"):
+        intersection = '\\'
+        right = '-'
+    if(args.style == "fancy"):
+        intersection = '└'
+        right = '─'
+
+    if(indentby == 1):
+        return ("" + intersection)
+    if(indentby == 2):
+        return(intersection + " ")
+    if(indentby == 3):
+        return(intersection + right + " ")
+    if(indentby == 4):
+        return(intersection + right + right + " ")
+
+    retstring = intersection + right + right
+    while(indentby > 4):
+        if(args.width < 0):
+            retstring = " " + retstring
+        else:
+            retstring = retstring + right
+        indentby = indentby - 1
+    return(retstring + " ")
+
+def decorate_other(args, parentname):
+    indentby = args.width
+    if(indentby < 0):
+        indentby = len(parentname) + 1
+    if(indentby == 0):
+        return("")
+
+    down = ' '
+    if(args.style == "ascii"):
+        down = '|'
+    if(args.style == "fancy"):
+        down = '│'
+
+    if(indentby == 1):
+        return ("" + down)
+    if(indentby == 2):
+        return(down + " ")
+    if(indentby == 3):
+        return(down + "  ")
+    if(indentby == 4):
+        return(down + "   ")
+
+    retstring = down + "  "
+    while(indentby > 4):
+        if(args.width < 0):
+            retstring = " " + retstring
+        else:
+            retstring = retstring + " "
+        indentby = indentby - 1
+    return(retstring + " ")
+
+def decorate_none(parentname):
+    indentby = args.width
+    if(indentby < 0):
+        indentby = len(parentname) + 1
+    if(indentby == 0):
+        return("")
+
+    down = ' '
+
+    if(indentby == 1):
+        return ("" + down)
+    if(indentby == 2):
+        return(down + " ")
+    if(indentby == 3):
+        return(down + "  ")
+    if(indentby == 4):
+        return(down + "   ")
+
+    retstring = down + "  "
+    while(indentby > 4):
+        if(args.width < 0):
+            retstring = " " + retstring
+        else:
+            retstring = retstring + " "
+        indentby = indentby - 1
+    return(retstring + " ")
+
+def decorate_perhaps(args, parentname):
+    indentby = args.width
+    if(indentby < 0):
+        indentby = len(parentname) + 1
+    if(indentby == 0):
+        return("")
+
+    down = ' '
+    if(args.style == "ascii"):
+        down = "."
+    if(args.style == "fancy"):
+        down = ':'
+
+    if(indentby == 1):
+        return ("" + down)
+    if(indentby == 2):
+        return(down + " ")
+    if(indentby == 3):
+        return(down + "  ")
+    if(indentby == 4):
+        return(down + "   ")
+
+    retstring = down + "  "
+    while(indentby > 4):
+        if(args.width < 0):
+            retstring = " " + retstring
+        else:
+            retstring = retstring + " "
+        indentby = indentby - 1
+    return(retstring + " ")
+
+class trelement:
+    def __init__(self, name, seperator):
+        self.name = name
+        self.seperator = seperator
+        self.children = None
+        self.printed = False
+
+    def print_eol(self, temt):
+        sys.stdout.write(temt.name + temt.seperator + '\n')
+        temt.printed = True
+        return(0)
+
+    def only_recurse(self, temt, args):
+        retval = temt.printpop(args)
+        if (temt.children == None) or ( len(temt.children) == 0):
+            self.children.popleft()
+            return(retval + 1)
+        else:
+            return(retval)
+
+    def print_recurse(self, temt, args):
+        sys.stdout.write(temt.name + temt.seperator)
+        temt.printed = True
+        return(self.only_recurse(temt, args))
+
+    def recurse_printed(self, temt, args):
+    # temt is printed, but still present
+    # prints the appropriately generated pre-string
+    # depends on the global "finished" flag in order
+    # to generate the appropriate pre-strings
+
+        if(temt.children[0].printed == True):
+            if (len(temt.children) == 1):
+                if (len(self.children) == 1) and (finished == False):
+                    sys.stdout.write(decorate_perhaps(args, temt.name))
+                else:
+                    sys.stdout.write(decorate_none(temt.name))
+            else:
+                sys.stdout.write(decorate_other(args, temt.name))
+        else:
+            if(len(temt.children) == 1):
+                sys.stdout.write(decorate_lastchild(args, temt.name))
+            else:
+                sys.stdout.write(decorate_child(args, temt.name))
+        return(self.only_recurse(temt, args))
+
+    def addtotree(self, addlist, seplist):
+    # inserts element from the list of addable elements as fit
+    # the leftmost element in the addlist is either already a
+    # child of the current element (self), or to be added to
+    # the list of child elements of the current element (self)
+    #
+    # always fills in the datastructures of its children with
+    # the respective data (name/id, seperator) before running
+    # itself recursively on the child element.
+    # (This may cause confusion when trying to understand this
+    # part of the code, just remember that the function does
+    # not have to fill in anything if it is given an empty
+    # addlist, e.g. all children were created as needed and
+    # the last call to the function is merely a terminus)
+    #
+    # returns the total number of elements that had to be newly
+    # created, which is 0 if two lines are exactly identical
+    # and at least 1 in every other case
+
+        if (len(addlist) == 0):
+            return(0)
+#        print(addlist) # debug
+
+        addid = addlist.popleft()
+        if seplist:
+            seperator = seplist.popleft()
+        else:
+            seperator = ""
+
+        if self.children == None:
+            self.children = deque([trelement(addid, seperator)])
+            return(1 + self.children[0].addtotree(addlist, seplist))
+
+        else:
+            if (self.children[-1].name != addid):
+                self.children.append(trelement(addid, seperator))
+                return(1 + self.children[-1].addtotree(addlist, seplist))
+            else:
+                self.children[-1].seperator = seperator
+                return(self.children[-1].addtotree(addlist, seplist))
+
+    def printpop(self, args):
+        if (self.children == None) or (not self.children):
+            sys.stderr.write(progstring + ": error: printpop function should not reach leaf item \n")
+            return(0)
+
+        else:
+            t = self.children[0]
+            if (t.printed == False):
+                if(t.children == None) or (not t.children):
+                    #return(self.print_eol(t))
+                    self.print_eol(t)
+                    self.children.popleft()
+                    return(1)
+                else:
+                    if (args.folding == "max"):
+                        return(self.print_eol(t))
+                    else:
+                        if (args.folding == "min"):
+                            return(self.print_recurse(t, args))
+                        else:
+                            if (len(t.children) == 1):
+                                return(self.print_recurse(t, args))
+                            else:
+                                return(self.print_eol(t))
+            else:
+                if(t.children == None) or (not t.children):
+                    sys.stderr.write(progstring + ": error: empty and printed item \"" + t.name + "\" in buffer, deleting" + '\n')
+                    sys.stdout.write('\r')
+                    self.children.popleft()
+                    return(1)
+                else:
+                    return(self.recurse_printed(t, args))
+
+class treehead:
+    def __init__(self):
+        self.entries = deque([])
+
+    def print_eol(self, temt):
+        sys.stdout.write(temt.name + temt.seperator + '\n')
+        temt.printed = True
+        return(0)
+
+    def only_recurse(self, temt, args):
+        retval = temt.printpop(args)
+        if (temt.children == None) or (len(temt.children) == 0):
+            self.entries.popleft()
+            return(retval + 1)
+        else:
+            return(retval)
+
+    def print_recurse(self, temt, args):
+        sys.stdout.write(temt.name + temt.seperator)
+        temt.printed = True
+        return(self.only_recurse(temt, args))
+
+    def recurse_printed(self, temt, args):
+    # temt is printed, but still present
+    # prints the appropriately generated pre-string
+    # depends on the global "finished" flag in order
+    # to generate the appropriate pre-strings
+
+        if(temt.children[0].printed == True):
+            if (len(temt.children) == 1):
+                if (len(self.entries) == 1) and (finished == False):
+                    sys.stdout.write(decorate_perhaps(args, temt.name))
+                else:
+                    sys.stdout.write(decorate_none(temt.name))
+            else:
+                sys.stdout.write(decorate_other(args, temt.name))
+        else:
+            if(len(temt.children) == 1):
+                sys.stdout.write(decorate_lastchild(args, temt.name))
+            else:
+                sys.stdout.write(decorate_child(args, temt.name))
+        return(self.only_recurse(temt, args))
+
+    def addto(self, addlist, seplist):
+        addid = addlist.popleft()
+        if seplist:
+            seperator = seplist.popleft()
+        else:
+            seperator = ""
+
+        if not self.entries:
+            self.entries.append(trelement(addid, seperator))
+            return(1 + self.entries[0].addtotree(addlist, seplist))
+
+        else:
+            if (self.entries[-1].name != addid):
+                self.entries.append(trelement(addid,seperator))
+                return(1+ self.entries[-1].addtotree(addlist, seplist))
+            else:
+                self.entries[-1].seperator = seperator
+                return(self.entries[-1].addtotree(addlist, seplist))
+
+    def printpop(self, args):
+        if not self.entries:
+            sys.stderr.write(progstring + ": error: printpop function should not reach leaf item \n")
+            return(0)
+
+        else:
+            t = self.entries[0]
+            if (t.printed == False):
+                if(t.children == None) or (not t.children):
+                    #return(self.print_eol(t))
+                    self.print.eol(t)
+                    self.entries.popleft()
+                    return(1)
+                else:
+                    if (args.folding == "max"):
+                        return(self.print_eol(t))
+                    else:
+                        if (args.folding == "min"):
+                            return(self.print_recurse(t, args))
+                        else:
+                            if (len(t.children) == 1):
+                                return(self.print_recurse(t, args))
+                            else:
+                                return(self.print_eol(t))
+            else:
+                if(t.children == None) or (not t.children):
+                    sys.stderr.write(progstring + ": error: empty and printed item \"" + t.name + "\" in buffer, deleting" + '\n')
+                    sys.stdout.write('\r')
+                    self.entries.popleft()
+                    return(1)
+                else:
+                    return(self.recurse_printed(t, args))
+
+
+#--- MAIN PROGRAM ---
+
+linebuffer = treehead()
+count = 0
+
+for line in sys.stdin:
+    proto = regex.split(line.rstrip('\r\n'))
+    names = deque([])
+    seperators = deque([])
+
+    index = 0
+    for thing in proto:
+        if index % 2 == 0:
+            names.append(thing)
+        else:
+            seperators.append(thing)
+        index += 1
+
+    count = count + linebuffer.addto(names, seperators)
+    while (count > args.objects):
+        count = count - linebuffer.printpop(args)
+
+finished = True
+
+while (count > 0):
+    count = count - linebuffer.printpop(args)
