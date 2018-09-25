@@ -415,7 +415,7 @@ class treehead:
             if (t.printed == False):
                 if(t.children == None) or (not t.children):
                     #return(self.print_eol(t))
-                    self.print.eol(t)
+                    self.print_eol(t)
                     self.entries.popleft()
                     return(1)
                 else:
