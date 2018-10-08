@@ -457,6 +457,9 @@ for line in sys.stdin:
             seperators.append(thing)
         index += 1
 
+    if (names[-1] == ""):
+        names.pop()
+        seperators.pop()
     count = count + linebuffer.addto(names, seperators)
     while (count > args.objects):
         count = count - linebuffer.printpop(args)
