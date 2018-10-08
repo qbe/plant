@@ -1,0 +1,62 @@
+.\" Process this file with
+.\" groff -man -Tascii plant.1
+.\"
+.Dd  OCT 09, 2018
+.Dt PLANT 1 1
+.Os GNU
+.Sh NAME
+.Nm plant
+.Nd visualize input data as tree
+.Sh SYNOPSIS
+.Nm
+.Op Fl h
+.Op Fl v
+.Op Fl m No | Fl M No | Fl s
+.Op Fl a No | Fl f No | Fl n
+.Op Fl w Ar WIDTH
+.Op Fl r Ar REGEX
+.Op Fl o Ar OBJECTS
+.Sh DESCRIPTION
+The program "plant" will read in any number of lines, and arrange them internally in an n-ary tree,
+where each line is broken up into "identifiers" and "seperators", with the "seperators" specifiable via the argument "-r REGEX".
+
+After the program receives the end-of-file signal or runs over the configured threshhold of objects in the tree,
+it will start printing the tree in a visually pleasing and configurable manner.
+
+The input should be in depth-first traversal manner(e.g. child items should come before siblings), which is automatically done
+by pretty much any recursively working utility. Lexically sorting the input lines is not necessary, but will accomplish the depth-first traversal requirement for any input.
+
+.Sh OPTIONS
+.Bl -tag -width 4n
+.It Fl h No , Fl -help
+show a short help message and exit
+.It Fl V No , Fl -version No , Fl -Version
+show program's version number and exit
+
+.It [ Fl m Fl -min No ] [ Fl M Fl -max Fl -max No ] [ Fl s Fl -sensible No ]
+never unfold nodes / always unfold nodes / unfold nodes if they have multiple child nodes,
+default folding is "sensible"
+
+.It [ Fl a Fl -ascii No ] [ Fl f Fl -fancy Fl -ansi No ] [ Fl n Fl -none No ]
+ascii-style / ansi-style / no indent lines, default indent lines are "fancy" style
+.It Fl w Ar WIDTH No , Fl -width Ar WIDTH
+per-level indentation width, -1 for length-based indent style, defaults to 4
+.It Fl r Ar REGEX No , Fl -regex Ar REGEX
+regex to split at, cannot contain paranthesis, defaults to "/"
+.It Fl o Ar OBJECTS No , Fl -objects Ar OBJECTS
+maximum number of objects buffered in memory, defaults to 1024
+.El
+
+.Sh EXAMPLES
+.Ic "find . | plant"
+.Pp
+.No prints a file tree from the current directory
+
+.\" .Sh BUGS
+.\" please submit any bugs you find to th
+.\" .Sh RESTRICTIONS
+.\" Bugs you don't plan to fix. :-)
+.Sh AUTHOR
+Lukas Hannen <plant dot software dot c at hannen dot at>
+.Sh SEE ALSO
+.Xr tree 1 .

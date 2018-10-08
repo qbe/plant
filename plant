@@ -19,7 +19,7 @@
 #--- GLOBAL CONSTANTS ---
 
 progstring = "plant"
-versionstring = "1.0.1"
+versionstring = "1.0.3"
 fullstring = progstring + ", version " + versionstring
 
 
