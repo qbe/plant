@@ -1,6 +1,6 @@
 # plant
 
-A command line utility for visualization of hirarchical data in tree form,
+A command line utility for visualization of hierarchical data in tree form,
 written in python and thus portable to pretty much anything.
 
 The program "plant" will read in any number of lines, and arrange them internally
