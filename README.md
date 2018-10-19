@@ -23,7 +23,7 @@ The difference of this program compared to the canonical utility "tree" is that 
 
 # installation
 
-Just copy the file to your computer. If you have Python 3 installed it should work ou
+Just copy the file to your computer. If you have Python 3 installed it should work out
 of the box. If you want to be able to run it as any command line utility, copy it to
 a location in your $PATH. Packages for Arch Linux are avaliable via the AUR, packages
 for different distributions are to be done.
