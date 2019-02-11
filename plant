@@ -26,6 +26,7 @@ fullstring = progstring + ", version " + versionstring
 #--- ARGUMENT PARSING ---
 
 import argparse
+from os import sep
 
 parser = argparse.ArgumentParser(prog=progstring, description='generate tree-like lifeforms from sorted lists')
 
@@ -44,7 +45,7 @@ lin.add_argument("-n", "--none",		action="store_const", dest="style", const="non
 parser.set_defaults(style="fancy")
 
 parser.add_argument("-w", "--width", type=int, default=4, help="per-level indentation width, -1 for length-based indent style, defaults to %(default)i")
-parser.add_argument("-r", "--regex", default="/", help="regex to split at, cannot contain paranthesis, defaults to \"%(default)s\"")
+parser.add_argument("-r", "--regex", default=sep, help="regex to split at, cannot contain paranthesis, defaults to \"%(default)s\"")
 parser.add_argument("-o", "--objects", type=int, default=1024, help="maximum number of objects buffered in memory, defaults to %(default)i")
 
 args = parser.parse_args()
