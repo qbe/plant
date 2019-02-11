@@ -33,7 +33,7 @@ show a short help message and exit
 .It Fl V No , Fl -version No , Fl -Version
 show program's version number and exit
 
-.It [ Fl m Fl -min No ] [ Fl M Fl -max Fl -max No ] [ Fl s Fl -sensible No ]
+.It [ Fl m Fl -min No ] [ Fl M Fl -max Fl -Max No ] [ Fl s Fl -sensible No ]
 never unfold nodes / always unfold nodes / unfold nodes if they have multiple child nodes,
 default folding is "sensible"
 
