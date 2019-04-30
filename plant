@@ -1,4 +1,4 @@
-#!/bin/python3
+#!/usr/bin/env python3
 
 #    prints a configurable tree-view of the input data
 #    Copyright (C) 2018 Lukas Hannen
@@ -270,6 +270,7 @@ class trelement:
 
     def addtotree(self, addlist, seplist):
     # inserts element from the list of addable elements as fit
+    #
     # the leftmost element in the addlist is either already a
     # child of the current element (self), or to be added to
     # the list of child elements of the current element (self)
