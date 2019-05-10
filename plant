@@ -469,7 +469,6 @@ def main():
         count = count + linebuffer.addto(names, seperators)
         while (count > args.objects):
             count = count - linebuffer.printpop(args, finished)
-        sys.stdout.write(str(count) + "\n")
 
     finished = True
 
