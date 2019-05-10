@@ -22,44 +22,41 @@ progstring = "plant"
 versionstring = "1.0.3"
 fullstring = progstring + ", version " + versionstring
 
-
-#--- ARGUMENT PARSING ---
-
-import argparse
-from os import sep
-
-parser = argparse.ArgumentParser(prog=progstring, description='generate tree-like lifeforms from sorted lists')
-
-parser.add_argument("-V", "--version", "--Version", action='version', version=fullstring)
-
-fold = parser.add_mutually_exclusive_group()
-fold.add_argument("-m", "--min",		action="store_const", dest="folding", const="min", help="never unfold nodes")
-fold.add_argument("-M", "--max", "--Max",	action="store_const", dest="folding", const="max", help="always unfold nodes")
-fold.add_argument("-s","--sensible",		action="store_const", dest="folding", const="sensible", help="only unfold nodes with multiple childs, default folding is \"%(default)s\"")
-parser.set_defaults(folding="sensible")
-
-lin = parser.add_mutually_exclusive_group()
-lin.add_argument("-a", "--ascii",		action="store_const", dest="style", const="ascii", help="ascii-style indent lines")
-lin.add_argument("-f", "--fancy", "--ansi",	action="store_const", dest="style", const="fancy", help="ansi-style indent lines")
-lin.add_argument("-n", "--none",		action="store_const", dest="style", const="none", help="disables indent lines, default indent lines are \"%(default)s\" style")
-parser.set_defaults(style="fancy")
-
-parser.add_argument("-w", "--width", type=int, default=4, help="per-level indentation width, -1 for length-based indent style, defaults to %(default)i")
-parser.add_argument("-r", "--regex", default=sep, help="regex to split at, cannot contain paranthesis, defaults to \"%(default)s\"")
-parser.add_argument("-o", "--objects", type=int, default=1024, help="maximum number of objects buffered in memory, defaults to %(default)i")
-
-args = parser.parse_args()
+#--- INCLUDE SECTION ---
 
 import re
-regex_str = args.regex.translate({ord(c): None for c in '()' })#deletes any instances of '()' from the regex string
-regex= re.compile("(" + regex_str + ")")
-finished = False
-
+import sys
+from collections import deque
 
 #--- DEFINE SECTION ---
 
-import sys
-from collections import deque
+def arguments():
+    import argparse
+    from os import sep
+
+    parser = argparse.ArgumentParser(prog=progstring, description='generate tree-like lifeforms from sorted lists')
+
+    parser.add_argument("-V", "--version", "--Version", action='version', version=fullstring)
+
+    fold = parser.add_mutually_exclusive_group()
+    fold.add_argument("-m", "--min", action="store_const", dest="folding", const="min", help="never unfold nodes")
+    fold.add_argument("-M", "--max", "--Max", action="store_const", dest="folding", const="max", help="always unfold nodes")
+    fold.add_argument("-s","--sensible", action="store_const", dest="folding", const="sensible", help="only unfold nodes with multiple childs, default folding is \"%(default)s\"")
+    parser.set_defaults(folding="sensible")
+
+    lin = parser.add_mutually_exclusive_group()
+    lin.add_argument("-a", "--ascii", action="store_const", dest="style", const="ascii", help="ascii-style indent lines")
+    lin.add_argument("-f", "--fancy", "--ansi",	action="store_const", dest="style", const="fancy", help="ansi-style indent lines")
+    lin.add_argument("-n", "--none", action="store_const", dest="style", const="none", help="disables indent lines, default indent lines are \"%(default)s\" style")
+    parser.set_defaults(style="fancy")
+
+    parser.add_argument("-w", "--width", type=int, default=4, help="per-level indentation width, -1 for length-based indent style, defaults to %(default)i")
+    parser.add_argument("-r", "--regex", default=sep, help="regex to split at, cannot contain paranthesis, defaults to \"%(default)s\"")
+    parser.add_argument("-o", "--objects", type=int, default=1024, help="maximum number of objects buffered in memory, defaults to %(default)i")
+
+    return(parser.parse_args())
+
+
 
 # the decorate_* functions are used to assemble the appropriate string decorations,
 # depending on line style and indentation level
@@ -234,23 +231,23 @@ class trelement:
         temt.printed = True
         return(0)
 
-    def only_recurse(self, temt, args):
-        retval = temt.printpop(args)
+    def only_recurse(self, temt, args, finished):
+        retval = temt.printpop(args, finished)
         if (temt.children == None) or ( len(temt.children) == 0):
             self.children.popleft()
             return(retval + 1)
         else:
             return(retval)
 
-    def print_recurse(self, temt, args):
+    def print_recurse(self, temt, args, finished):
         sys.stdout.write(temt.name + temt.seperator)
         temt.printed = True
-        return(self.only_recurse(temt, args))
+        return(self.only_recurse(temt, args, finished))
 
-    def recurse_printed(self, temt, args):
+    def recurse_printed(self, temt, args, finished):
     # temt is printed, but still present
     # prints the appropriately generated pre-string
-    # depends on the global "finished" flag in order
+    # depends on the "finished" flag in order
     # to generate the appropriate pre-strings
 
         if(temt.children[0].printed == True):
@@ -266,7 +263,7 @@ class trelement:
                 sys.stdout.write(decorate_lastchild(args, temt.name))
             else:
                 sys.stdout.write(decorate_child(args, temt.name))
-        return(self.only_recurse(temt, args))
+        return(self.only_recurse(temt, args, finished))
 
     def addtotree(self, addlist, seplist):
     # inserts element from the list of addable elements as fit
@@ -311,7 +308,7 @@ class trelement:
                     self.children[-1].seperator = seperator
                 return(self.children[-1].addtotree(addlist, seplist))
 
-    def printpop(self, args):
+    def printpop(self, args, finished):
         if (self.children == None) or (not self.children):
             sys.stderr.write(progstring + ": error: printpop function should not reach leaf item \n")
             return(0)
@@ -342,7 +339,7 @@ class trelement:
                     self.children.popleft()
                     return(1)
                 else:
-                    return(self.recurse_printed(t, args))
+                    return(self.recurse_printed(t, args, finished))
 
 class treehead:
     def __init__(self):
@@ -353,23 +350,23 @@ class treehead:
         temt.printed = True
         return(0)
 
-    def only_recurse(self, temt, args):
-        retval = temt.printpop(args)
+    def only_recurse(self, temt, args, finished):
+        retval = temt.printpop(args,finished)
         if (temt.children == None) or (len(temt.children) == 0):
             self.entries.popleft()
             return(retval + 1)
         else:
             return(retval)
 
-    def print_recurse(self, temt, args):
+    def print_recurse(self, temt, args, finished):
         sys.stdout.write(temt.name + temt.seperator)
         temt.printed = True
-        return(self.only_recurse(temt, args))
+        return(self.only_recurse(temt, args, finished))
 
-    def recurse_printed(self, temt, args):
+    def recurse_printed(self, temt, args, finished):
     # temt is printed, but still present
     # prints the appropriately generated pre-string
-    # depends on the global "finished" flag in order
+    # depends on the "finished" flag in order
     # to generate the appropriate pre-strings
 
         if(temt.children[0].printed == True):
@@ -385,7 +382,7 @@ class treehead:
                 sys.stdout.write(decorate_lastchild(args, temt.name))
             else:
                 sys.stdout.write(decorate_child(args, temt.name))
-        return(self.only_recurse(temt, args))
+        return(self.only_recurse(temt, args, finished))
 
     def addto(self, addlist, seplist):
         addid = addlist.popleft()
@@ -407,7 +404,7 @@ class treehead:
                     self.entries[-1].seperator = seperator
                 return(self.entries[-1].addtotree(addlist, seplist))
 
-    def printpop(self, args):
+    def printpop(self, args, finished):
         if not self.entries:
             sys.stderr.write(progstring + ": error: printpop function should not reach leaf item \n")
             return(0)
@@ -428,7 +425,7 @@ class treehead:
                             return(self.print_recurse(t, args))
                         else:
                             if (len(t.children) == 1):
-                                return(self.print_recurse(t, args))
+                                return(self.print_recurse(t, args, finished))
                             else:
                                 return(self.print_eol(t))
             else:
@@ -438,35 +435,48 @@ class treehead:
                     self.entries.popleft()
                     return(1)
                 else:
-                    return(self.recurse_printed(t, args))
+                    return(self.recurse_printed(t, args, finished))
 
 
-#--- MAIN PROGRAM ---
+#--- MAIN FUNCTION ---
+def main():
+    linebuffer = treehead()
+    count = 0
+    finished = False
 
-linebuffer = treehead()
-count = 0
+    args = arguments()
+    regex_str = args.regex.translate({ord(c): None for c in '()' })
+    #deletes any instances of '()' from the regex string
 
-for line in sys.stdin:
-    proto = regex.split(line.rstrip('\r\n'))
-    names = deque([])
-    seperators = deque([])
+    regex= re.compile("(" + regex_str + ")")
 
-    index = 0
-    for thing in proto:
-        if index % 2 == 0:
-            names.append(thing)
-        else:
-            seperators.append(thing)
-        index += 1
+    for line in sys.stdin:
+        proto = regex.split(line.rstrip('\r\n'))
+        names = deque([])
+        seperators = deque([])
 
-    if (names[-1] == "") and (len(seperators) > 0):
-        names.pop()
-        seperators.pop()
-    count = count + linebuffer.addto(names, seperators)
-    while (count > args.objects):
-        count = count - linebuffer.printpop(args)
+        index = 0
+        for thing in proto:
+            if index % 2 == 0:
+                names.append(thing)
+            else:
+                seperators.append(thing)
+            index += 1
 
-finished = True
+        if (names[-1] == "") and (len(seperators) > 0):
+            names.pop()
+            seperators.pop()
+        count = count + linebuffer.addto(names, seperators)
+        while (count > args.objects):
+            count = count - linebuffer.printpop(args, finished)
+        sys.stdout.write(str(count) + "\n")
 
-while (count > 0):
-    count = count - linebuffer.printpop(args)
+    finished = True
+
+    while (count > 0):
+        count = count - linebuffer.printpop(args, finished)
+
+
+
+if(__name__ == "__main__"):
+    main()
