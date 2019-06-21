@@ -14,7 +14,7 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#    along with this program.  If not, see <https://www.gnu.org/licenses
 
 #--- GLOBAL CONSTANTS ---
 
@@ -161,7 +161,7 @@ def decorate_other(args, parentname):
         indentby = indentby - 1
     return(retstring + " ")
 
-def decorate_none(parentname):
+def decorate_none(args, parentname):
     indentby = args.width
     if(indentby < 0):
         indentby = len(parentname) + 1
@@ -255,7 +255,7 @@ class trelement:
                 if (len(self.children) == 1) and (finished == False):
                     sys.stdout.write(decorate_perhaps(args, temt.name))
                 else:
-                    sys.stdout.write(decorate_none(temt.name))
+                    sys.stdout.write(decorate_none(args, temt.name))
             else:
                 sys.stdout.write(decorate_other(args, temt.name))
         else:
@@ -329,7 +329,7 @@ class trelement:
                             return(self.print_recurse(t, args))
                         else:
                             if (len(t.children) == 1):
-                                return(self.print_recurse(t, args))
+                                return(self.print_recurse(t, args, finished))
                             else:
                                 return(self.print_eol(t))
             else:
@@ -374,7 +374,7 @@ class treehead:
                 if (len(self.entries) == 1) and (finished == False):
                     sys.stdout.write(decorate_perhaps(args, temt.name))
                 else:
-                    sys.stdout.write(decorate_none(temt.name))
+                    sys.stdout.write(decorate_none(args, temt.name))
             else:
                 sys.stdout.write(decorate_other(args, temt.name))
         else:
