@@ -14,7 +14,7 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <https://www.gnu.org/licenses
+#    along with this program.  If not, see <https://www.gnu.org/licenses>
 
 #--- GLOBAL CONSTANTS ---
 
@@ -326,7 +326,7 @@ class trelement:
                         return(self.print_eol(t))
                     else:
                         if (args.folding == "min"):
-                            return(self.print_recurse(t, args))
+                            return(self.print_recurse(t, args, finished))
                         else:
                             if (len(t.children) == 1):
                                 return(self.print_recurse(t, args, finished))
@@ -422,7 +422,7 @@ class treehead:
                         return(self.print_eol(t))
                     else:
                         if (args.folding == "min"):
-                            return(self.print_recurse(t, args))
+                            return(self.print_recurse(t, args, finished))
                         else:
                             if (len(t.children) == 1):
                                 return(self.print_recurse(t, args, finished))
